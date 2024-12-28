@@ -20,7 +20,6 @@ BOARD_X = (WINDOW_WIDTH - GRID_WIDTH * BLOCK_SIZE) // 2
 BOARD_Y = 30  # Some margin from the top
 
 # Offsets for the "Hold" area and "Next" area
-# so they are visible on the left and right sides
 HOLD_AREA_X = 20
 HOLD_AREA_Y = 50
 
@@ -30,221 +29,50 @@ NEXT_AREA_Y = 50
 FPS = 60
 LOCK_DELAY = 0.5  # 0.5 seconds of "floor time" before piece locks
 
+# Key repeat settings (in milliseconds)
+MOVE_REPEAT_INITIAL_DELAY_MS = 200  # How long to hold before repeat starts
+MOVE_REPEAT_INTERVAL_MS = 50        # How quickly repeated moves happen
 
 # ---------------------------------------------------
 # Tetromino Definitions
 # ---------------------------------------------------
 TETROMINOES = {
-    # ----------------------------------------------------------------
-    # I PIECE
-    # ----------------------------------------------------------------
-    #
-    # Rotations (using a 4x1 or 1x4 bounding box):
-    #
-    # 0 (Horizontal):
-    #  XXXX
-    #  coords: (0,0),(1,0),(2,0),(3,0)
-    #
-    # 1 (Vertical):
-    #  X
-    #  X
-    #  X
-    #  X
-    #  coords: (0,0),(0,1),(0,2),(0,3)
-    #
-    # 2 (Horizontal, same as 0):
-    #  XXXX
-    #
-    # 3 (Vertical, same as 1):
-    #  X
-    #  X
-    #  X
-    #  X
-    #
     "I": [
         [(0, 0), (1, 0), (2, 0), (3, 0)],   # rotation 0
         [(0, 0), (0, 1), (0, 2), (0, 3)],   # rotation 1
         [(0, 0), (1, 0), (2, 0), (3, 0)],   # rotation 2
         [(0, 0), (0, 1), (0, 2), (0, 3)],   # rotation 3
     ],
-
-    # ----------------------------------------------------------------
-    # O PIECE (square)
-    # ----------------------------------------------------------------
-    #
-    # The square is the same in all 4 rotations:
-    #
-    #  XX
-    #  XX
-    #
-    #  coords: (0,0),(1,0),(0,1),(1,1)
-    #
     "O": [
         [(0, 0), (1, 0), (0, 1), (1, 1)],
         [(0, 0), (1, 0), (0, 1), (1, 1)],
         [(0, 0), (1, 0), (0, 1), (1, 1)],
         [(0, 0), (1, 0), (0, 1), (1, 1)],
     ],
-
-    # ----------------------------------------------------------------
-    # T PIECE
-    # ----------------------------------------------------------------
-    #
-    # 0 (T UP):
-    #    X
-    #   XXX
-    #  coords: (0,1),(1,1),(2,1),(1,0)
-    #
-    # 1 (T RIGHT):
-    #    X
-    #    XX
-    #    X
-    #  coords: (1,0),(1,1),(1,2),(2,1)
-    #
-    # 2 (T DOWN):
-    #   XXX
-    #    X
-    #  coords: (0,0),(1,0),(2,0),(1,1)
-    #
-    # 3 (T LEFT):
-    #     X
-    #    XX
-    #     X
-    #  coords: (0,1),(1,1),(1,0),(1,2)
-    #
     "T": [
         [(0, 1), (1, 1), (2, 1), (1, 0)],  # UP
         [(1, 0), (1, 1), (1, 2), (2, 1)],  # RIGHT
         [(0, 0), (1, 0), (2, 0), (1, 1)],  # DOWN
         [(0, 1), (1, 1), (1, 0), (1, 2)],  # LEFT
     ],
-
-    # ----------------------------------------------------------------
-    # S PIECE
-    # ----------------------------------------------------------------
-    #
-    # Generally S has only 2 unique orientations, but we list 4
-    # for consistency (the repeats can be used in some Tetris logic).
-    #
-    # 0 (Horizontal):
-    #    XX
-    #   XX
-    #  coords: (1,0),(2,0),(0,1),(1,1)
-    #
-    # 1 (Vertical):
-    #    X
-    #    XX
-    #     X
-    #  coords: (1,0),(1,1),(2,1),(2,2)
-    #
-    # 2 (Horizontal, repeat):
-    #    XX
-    #   XX
-    #
-    # 3 (Vertical, alternate):
-    #    X
-    #    XX
-    #     X
-    #
     "S": [
         [(1, 0), (2, 0), (0, 1), (1, 1)],    # 0
         [(1, 0), (1, 1), (2, 1), (2, 2)],    # 1
-        [(1, 1), (2, 1), (0, 2), (1, 2)],    # 2 (repeat or mirrored)
-        [(0, 0), (0, 1), (1, 1), (1, 2)],    # 3 (alternate orientation)
+        [(1, 1), (2, 1), (0, 2), (1, 2)],    # 2
+        [(0, 0), (0, 1), (1, 1), (1, 2)],    # 3
     ],
-
-    # ----------------------------------------------------------------
-    # Z PIECE
-    # ----------------------------------------------------------------
-    #
-    # Like S, Z also has 2 unique orientations, repeated/expanded to 4.
-    #
-    # 0 (Horizontal):
-    #   XX
-    #    XX
-    #  coords: (0,0),(1,0),(1,1),(2,1)
-    #
-    # 1 (Vertical):
-    #    X
-    #   XX
-    #   X
-    #  coords: (1,-1),(1,0),(0,0),(0,1)
-    #
-    # 2 (Horizontal, repeat of 0):
-    #   XX
-    #    XX
-    #
-    # 3 (Vertical, repeat of 1):
-    #    X
-    #   XX
-    #   X
-    #
     "Z": [
         [(0, 0), (1, 0), (1, 1), (2, 1)],       # 0
         [(1, -1), (1, 0), (0, 0), (0, 1)],      # 1
         [(0, 0), (1, 0), (1, 1), (2, 1)],       # 2
         [(1, -1), (1, 0), (0, 0), (0, 1)],      # 3
     ],
-
-    # ----------------------------------------------------------------
-    # J PIECE
-    # ----------------------------------------------------------------
-    #
-    # 0 (J UP):
-    #   X
-    #   X
-    #  XX
-    #  coords: (0,0),(0,1),(0,2),(1,2)
-    #
-    # 1 (J RIGHT):
-    #  XXX
-    #  X
-    #  coords: (0,0),(1,0),(2,0),(0,1)
-    #
-    # 2 (J DOWN):
-    #  XX
-    #   X
-    #   X
-    #  coords: (1,0),(1,1),(1,2),(0,0)
-    #
-    # 3 (J LEFT):
-    #    X
-    #   XXX
-    #  coords: (0,1),(1,1),(2,1),(2,0)
-    #
     "L": [
         [(0, 0), (0, 1), (0, 2), (1, 2)],  # UP
         [(0, 0), (1, 0), (2, 0), (0, 1)],  # RIGHT
         [(1, 0), (1, 1), (1, 2), (0, 0)],  # DOWN
         [(0, 1), (1, 1), (2, 1), (2, 0)],  # LEFT
     ],
-
-    # ----------------------------------------------------------------
-    # L PIECE
-    # ----------------------------------------------------------------
-    #
-    # 0 (L UP):
-    #     X
-    #     X
-    #    XX
-    #  coords: (1,0),(1,1),(1,2),(0,2)
-    #
-    # 1 (L RIGHT):
-    #  XXX
-    #    X
-    #  coords: (0,0),(1,0),(2,0),(2,1)
-    #
-    # 2 (L DOWN):
-    #  XX
-    #  X
-    #  X
-    #  coords: (0,0),(0,1),(0,2),(1,0)
-    #
-    # 3 (L LEFT):
-    #  X
-    #  XXX
-    #  coords: (0,0),(1,0),(2,0),(0,1)
-    #
     "J": [
         [(1, 0), (1, 1), (1, 2), (0, 2)],  # UP
         [(0, 0), (0, 1), (1, 1), (2, 1)],  # RIGHT
@@ -252,8 +80,6 @@ TETROMINOES = {
         [(0, 0), (1, 0), (2, 0), (2, 1)],  # LEFT
     ],
 }
-
-
 
 COLORS: Dict[str, Tuple[int, int, int]] = {
     "I": (0, 255, 255),     # Cyan
@@ -264,6 +90,9 @@ COLORS: Dict[str, Tuple[int, int, int]] = {
     "J": (0, 0, 255),       # Blue
     "L": (255, 165, 0),     # Orange
 }
+
+# Ghost piece color (gray). Change if you like.
+GHOST_COLOR = (100, 100, 100)
 
 
 class Tetromino:
@@ -295,12 +124,21 @@ class TetrisGame:
         self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
         pygame.display.set_caption("Tetris")
 
+        # Enable key repeat for holding left/right
+        pygame.key.set_repeat(MOVE_REPEAT_INITIAL_DELAY_MS, MOVE_REPEAT_INTERVAL_MS)
+
         self.clock = pygame.time.Clock()
 
         # Board 2D array: None means empty cell, otherwise store a color
         self.board: List[List[Optional[Tuple[int, int, int]]]] = [
             [None] * GRID_WIDTH for _ in range(GRID_HEIGHT)
         ]
+
+        # Lines cleared
+        self.lines_cleared = 0
+
+        # Track total time in seconds
+        self.total_time = 0.0
 
         # Upcoming pieces (7-bag)
         self.upcoming_pieces: List[Tetromino] = []
@@ -320,6 +158,8 @@ class TetrisGame:
 
         # Lock delay timers
         self.lock_timer: float = 0.0
+
+        # Running game flag
         self.running: bool = True
 
     def _generate_new_bag(self) -> None:
@@ -328,14 +168,19 @@ class TetrisGame:
         for shape in shapes:
             self.upcoming_pieces.append(Tetromino(shape))
 
-    def run(self) -> None:
+    def run(self) -> bool:
+        """
+        Main game loop. Returns True if the player chooses to play again,
+        or False if they choose to exit.
+        """
         while self.running:
             dt = self.clock.tick(FPS) / 1000.0  # seconds per frame
             self.handle_events()
             self.update(dt)
             self.draw()
-        pygame.quit()
-        sys.exit()
+
+        # Once self.running is False, the game is over. Show popup.
+        return self.show_game_over_dialog()
 
     def handle_events(self) -> None:
         for event in pygame.event.get():
@@ -363,6 +208,7 @@ class TetrisGame:
         Update all game logic (auto-drop, lock delay, clearing lines).
         """
         self.drop_timer += dt
+        self.total_time += dt  # track total time
 
         # Check if the piece is on the ground
         if self.is_on_ground(self.current_piece):
@@ -401,6 +247,9 @@ class TetrisGame:
                     # faint grid line
                     pygame.draw.rect(self.screen, (40, 40, 40), rect, 1)
 
+        # Draw ghost piece first
+        self.draw_ghost_piece()
+
         # Draw the current falling piece
         for x, y in self.current_piece.get_blocks():
             if y >= 0:  # only draw if in visible region
@@ -418,7 +267,42 @@ class TetrisGame:
         # Draw the next 2 upcoming pieces on the right
         self.draw_next_pieces()
 
+        # Draw lines cleared & time
+        self.draw_stats()
+
         pygame.display.flip()
+
+    def draw_ghost_piece(self) -> None:
+        """
+        Draw a 'ghost' version of the current piece to show
+        where it would land if dropped.
+        """
+        # Make a temporary copy of the current piece
+        ghost = Tetromino(self.current_piece.shape)
+        ghost.x = self.current_piece.x
+        ghost.y = self.current_piece.y
+        ghost.rotation_index = self.current_piece.rotation_index
+
+        # Move down until it's invalid, then move back up 1
+        while self._is_valid_position(ghost):
+            ghost.y += 1
+        ghost.y -= 1
+
+        # If the ghost is exactly the same position as the current piece
+        # (meaning the piece is on ground already), we still draw it.
+        # Typically Tetris does show it in place. But you can skip if you want.
+
+        # Draw the ghost blocks
+        for (x, y) in ghost.get_blocks():
+            if y >= 0:  # only draw if in visible region
+                rect = pygame.Rect(
+                    BOARD_X + x * BLOCK_SIZE,
+                    BOARD_Y + y * BLOCK_SIZE,
+                    BLOCK_SIZE, BLOCK_SIZE
+                )
+                pygame.draw.rect(self.screen, GHOST_COLOR, rect)
+                # Outline it
+                pygame.draw.rect(self.screen, (255, 255, 255), rect, 1)
 
     def draw_hold_area(self) -> None:
         font = pygame.font.SysFont("Arial", 20)
@@ -475,6 +359,22 @@ class TetrisGame:
                     pygame.draw.rect(self.screen, color, rect)
                     pygame.draw.rect(self.screen, (255, 255, 255), rect, 1)
 
+    def draw_stats(self) -> None:
+        """
+        Draw lines cleared and total time (m:ss) in the top-left corner.
+        """
+        font = pygame.font.SysFont("Arial", 20)
+        lines_text = font.render(f"Lines: {self.lines_cleared}", True, (255, 255, 255))
+
+        # Convert total_time to minutes:seconds
+        minutes = int(self.total_time // 60)
+        seconds = int(self.total_time % 60)
+        time_text = font.render(f"Time: {minutes}:{seconds:02d}", True, (255, 255, 255))
+
+        # Blit them in the top-left corner (below HOLD or so)
+        self.screen.blit(lines_text, (HOLD_AREA_X, HOLD_AREA_Y + 130))
+        self.screen.blit(time_text, (HOLD_AREA_X, HOLD_AREA_Y + 160))
+
     def move_piece(self, dx: int = 0, dy: int = 0) -> None:
         old_x, old_y = self.current_piece.x, self.current_piece.y
         self.current_piece.x += dx
@@ -484,7 +384,6 @@ class TetrisGame:
             self.current_piece.x, self.current_piece.y = old_x, old_y
         else:
             # If we successfully moved while on the ground, reset lock timer
-            # (typical Tetris resets lock delay on any move or rotation)
             if self.is_on_ground(self.current_piece):
                 self.lock_timer = 0.0
 
@@ -537,7 +436,7 @@ class TetrisGame:
             self.current_piece.y = 0
             self.current_piece.rotation_index = 0
 
-            # Check validity; if invalid, game over or revert
+            # Check validity; if invalid, game over
             if not self._is_valid_position(self.current_piece):
                 self.running = False
 
@@ -567,9 +466,13 @@ class TetrisGame:
             if all(self.board[row_idx][col_idx] is not None for col_idx in range(GRID_WIDTH)):
                 full_rows.append(row_idx)
 
+        # Remove full rows and insert empty rows on top
         for row_idx in full_rows:
             del self.board[row_idx]
             self.board.insert(0, [None for _ in range(GRID_WIDTH)])
+
+        # Count them
+        self.lines_cleared += len(full_rows)
 
     def _is_valid_position(self, piece: Tetromino) -> bool:
         for x, y in piece.get_blocks():
@@ -581,19 +484,107 @@ class TetrisGame:
 
     def is_on_ground(self, piece: Tetromino) -> bool:
         """
-        Check if the piece is at a position where moving one step down
-        would be invalid (meaning it's 'resting' on the floor or on top of other blocks).
+        Check if moving the piece 1 step down would be invalid,
+        meaning it's 'resting' on the floor or on top of other blocks.
         """
         for x, y in piece.get_blocks():
-            # If directly below is out of board or occupied
             if y + 1 >= GRID_HEIGHT or self.board[y + 1][x] is not None:
                 return True
         return False
 
+    def show_game_over_dialog(self) -> bool:
+        """
+        Show a popup with game stats (lines cleared, total time),
+        and ask if you want to play again. Yes is default.
+        Returns True if "Yes," False if "No" or quit.
+        """
+        font_big = pygame.font.SysFont("Arial", 30, bold=True)
+        font_small = pygame.font.SysFont("Arial", 24)
+
+        # Convert total_time to m:ss
+        minutes = int(self.total_time // 60)
+        seconds = int(self.total_time % 60)
+
+        # Prepare text surfaces
+        game_over_text = font_big.render("GAME OVER", True, (255, 255, 255))
+        lines_text = font_small.render(f"Lines cleared: {self.lines_cleared}", True, (255, 255, 255))
+        time_text = font_small.render(f"Time: {minutes}:{seconds:02d}", True, (255, 255, 255))
+
+        # We'll have two "buttons": Yes / No
+        yes_text = font_small.render("Yes", True, (0, 0, 0))
+        no_text = font_small.render("No", True, (0, 0, 0))
+
+        # Selected button index: 0 for yes, 1 for no
+        selected = 0
+
+        # A simple loop to display the dialog and wait for user input
+        dialog_running = True
+        while dialog_running:
+            self.clock.tick(15)  # slow down the loop for the dialog
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    return False
+                elif event.type == pygame.KEYDOWN:
+                    if event.key in [pygame.K_LEFT, pygame.K_RIGHT]:
+                        # Toggle between yes/no
+                        selected = 1 - selected
+                    elif event.key in [pygame.K_RETURN, pygame.K_KP_ENTER]:
+                        # If "yes" selected
+                        if selected == 0:
+                            return True
+                        else:
+                            return False
+                    elif event.key == pygame.K_ESCAPE:
+                        return False
+
+            # Draw dialog background
+            self.screen.fill((0, 0, 0))
+
+            # Blit "GAME OVER" near center
+            gw = game_over_text.get_width()
+            gh = game_over_text.get_height()
+            self.screen.blit(game_over_text, ((WINDOW_WIDTH - gw) // 2, 100))
+
+            # Blit stats
+            lw = lines_text.get_width()
+            self.screen.blit(lines_text, ((WINDOW_WIDTH - lw) // 2, 160))
+
+            tw = time_text.get_width()
+            self.screen.blit(time_text, ((WINDOW_WIDTH - tw) // 2, 190))
+
+            # Draw Yes / No "buttons"
+            # Highlight the selected one by drawing a rectangle
+            yes_rect = pygame.Rect(WINDOW_WIDTH // 2 - 60, 250, 50, 30)
+            no_rect = pygame.Rect(WINDOW_WIDTH // 2 + 10, 250, 50, 30)
+
+            # Draw background for selected button
+            if selected == 0:
+                pygame.draw.rect(self.screen, (255, 255, 0), yes_rect)  # highlight yes
+                pygame.draw.rect(self.screen, (128, 128, 128), no_rect)
+            else:
+                pygame.draw.rect(self.screen, (128, 128, 128), yes_rect)
+                pygame.draw.rect(self.screen, (255, 255, 0), no_rect)  # highlight no
+
+            # Blit text "Yes" / "No"
+            self.screen.blit(yes_text, (yes_rect.x + 5, yes_rect.y + 2))
+            self.screen.blit(no_text, (no_rect.x + 5, no_rect.y + 2))
+
+            pygame.display.flip()
+
+        # If somehow we exit that loop, return False
+        return False
+
 
 def main():
-    game = TetrisGame()
-    game.run()
+    while True:
+        game = TetrisGame()
+        play_again = game.run()
+        if not play_again:
+            break
+
+    pygame.quit()
+    sys.exit()
 
 
 if __name__ == "__main__":
