@@ -162,6 +162,14 @@ class TetrisGame:
         # Running game flag
         self.running: bool = True
 
+        self.left_held = False
+        self.right_held = False
+        self.horizontal_move_cooldown = 0.0
+
+        self.initial_delay = 0.2  # seconds before repeat starts
+        self.repeat_interval = 0.05  # seconds between repeated moves
+
+
     def _generate_new_bag(self) -> None:
         shapes = list(TETROMINOES.keys())
         random.shuffle(shapes)
@@ -182,47 +190,70 @@ class TetrisGame:
         # Once self.running is False, the game is over. Show popup.
         return self.show_game_over_dialog()
 
-    def handle_events(self) -> None:
+    def handle_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
-                return
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_LEFT:
-                    self.move_piece(dx=-1)
-                elif event.key == pygame.K_RIGHT:
-                    self.move_piece(dx=1)
-                elif event.key == pygame.K_DOWN:
-                    self.soft_drop()
+                if event.key == pygame.K_z:
+                    self.rotate_piece(-1)
+                elif event.key == pygame.K_x:
+                    self.rotate_piece(1)
                 elif event.key == pygame.K_UP:
                     self.hard_drop()
                 elif event.key == pygame.K_SPACE:
                     self.hold_piece()
-                elif event.key == pygame.K_z:
-                    self.rotate_piece(-1)
-                elif event.key == pygame.K_x:
-                    self.rotate_piece(1)
+                elif event.key == pygame.K_LEFT:
+                    self.left_held = True
+                    # Move immediately on first press:
+                    self.move_piece(dx=-1)
+                    self.horizontal_move_cooldown = self.initial_delay
+                elif event.key == pygame.K_RIGHT:
+                    self.right_held = True
+                    # Move immediately on first press:
+                    self.move_piece(dx=1)
+                    self.horizontal_move_cooldown = self.initial_delay
+                elif event.key == pygame.K_DOWN:
+                    self.soft_drop()
+
+            elif event.type == pygame.KEYUP:
+                if event.key == pygame.K_LEFT:
+                    self.left_held = False
+                elif event.key == pygame.K_RIGHT:
+                    self.right_held = False
 
     def update(self, dt: float) -> None:
         """
         Update all game logic (auto-drop, lock delay, clearing lines).
+        This includes handling continuous movement for left/right.
         """
-        self.drop_timer += dt
-        self.total_time += dt  # track total time
+        # Handle horizontal movement (left/right) polling
+        keys = pygame.key.get_pressed()
 
-        # Check if the piece is on the ground
+        if self.left_held or self.right_held:
+            self.horizontal_move_cooldown -= dt
+            if self.horizontal_move_cooldown <= 0:
+                if self.left_held and keys[pygame.K_LEFT]:
+                    self.move_piece(dx=-1)
+                elif self.right_held and keys[pygame.K_RIGHT]:
+                    self.move_piece(dx=1)
+                self.horizontal_move_cooldown = self.repeat_interval
+
+        # Auto-drop logic for the current piece
+        self.drop_timer += dt
+        self.total_time += dt  # track total game time
+
+        # If piece is on the ground, handle lock delay
         if self.is_on_ground(self.current_piece):
-            # Start or continue the lock timer
             self.lock_timer += dt
-            # If it has sat on the ground too long, lock it
             if self.lock_timer >= LOCK_DELAY:
                 self.lock_piece()
                 self.spawn_new_piece()
         else:
-            # If not on the ground, reset the lock timer
+            # Reset lock timer if not on the ground
             self.lock_timer = 0.0
 
-        # Automatic soft drop
+        # Auto soft-drop based on the drop timer
         if self.drop_timer >= self.drop_interval:
             self.drop_timer = 0
             self.soft_drop()
