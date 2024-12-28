@@ -162,6 +162,7 @@ class TetrisGame:
         # Running game flag
         self.running: bool = True
 
+        self.hard_drop_held = False
         self.left_held = False
         self.right_held = False
         self.horizontal_move_cooldown = 0.0
@@ -190,7 +191,11 @@ class TetrisGame:
         # Once self.running is False, the game is over. Show popup.
         return self.show_game_over_dialog()
 
-    def handle_events(self):
+    def handle_events(self) -> None:
+        """
+        Handle all input events, including movement, rotation, and dropping.
+        Ensures hard drop only activates once per key press.
+        """
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
@@ -199,8 +204,9 @@ class TetrisGame:
                     self.rotate_piece(-1)
                 elif event.key == pygame.K_x:
                     self.rotate_piece(1)
-                elif event.key == pygame.K_UP:
+                elif event.key == pygame.K_UP and not self.hard_drop_held:
                     self.hard_drop()
+                    self.hard_drop_held = True  # Mark the hard drop as held
                 elif event.key == pygame.K_SPACE:
                     self.hold_piece()
                 elif event.key == pygame.K_LEFT:
@@ -215,9 +221,10 @@ class TetrisGame:
                     self.horizontal_move_cooldown = self.initial_delay
                 elif event.key == pygame.K_DOWN:
                     self.soft_drop()
-
             elif event.type == pygame.KEYUP:
-                if event.key == pygame.K_LEFT:
+                if event.key == pygame.K_UP:
+                    self.hard_drop_held = False  # Reset the flag when the key is released
+                elif event.key == pygame.K_LEFT:
                     self.left_held = False
                 elif event.key == pygame.K_RIGHT:
                     self.right_held = False
@@ -419,13 +426,31 @@ class TetrisGame:
                 self.lock_timer = 0.0
 
     def rotate_piece(self, direction: int) -> None:
+        """
+        Rotate the piece in the given direction (1 for clockwise, -1 for counter-clockwise).
+        If the rotation is invalid due to a wall or block collision, attempt a wall kick.
+        """
         old_rotation = self.current_piece.rotation_index
         self.current_piece.rotate(direction)
 
+        # If the rotation is invalid, attempt wall kicks
         if not self._is_valid_position(self.current_piece):
-            self.current_piece.rotation_index = old_rotation
+            # Define wall kick offsets to try
+            # Format: [(dx1, dy1), (dx2, dy2), ...]
+            wall_kicks = [(-1, 0), (1, 0), (-2, 0), (2, 0)]  # Try left and right adjustments
+
+            for dx, dy in wall_kicks:
+                self.current_piece.x += dx
+                self.current_piece.y += dy
+                if self._is_valid_position(self.current_piece):
+                    break  # Valid position found, stop trying kicks
+                self.current_piece.x -= dx
+                self.current_piece.y -= dy
+            else:
+                # No valid position found, revert rotation
+                self.current_piece.rotation_index = old_rotation
         else:
-            # Reset lock timer if on ground
+            # Reset lock timer if on ground after a valid rotation
             if self.is_on_ground(self.current_piece):
                 self.lock_timer = 0.0
 
