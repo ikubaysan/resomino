@@ -128,6 +128,38 @@ ACTION_LABELS: Dict[str, str] = {
     "pause": "Pause",
 }
 
+def _generate_wall_kicks() -> List[Tuple[int, int]]:
+    """
+    Build the list of (dx, dy) offsets to try, in order of preference, when
+    a rotation doesn't fit in place: smallest shift first; among equal-sized
+    shifts, pure horizontal, then pure vertical, then diagonal; negative
+    before positive.
+
+    Magnitude 3 is required in BOTH axes for the I piece: its "vertical"
+    form is only 1 column wide but 4 rows tall, so rotating it back to
+    horizontal (4 columns, 1 row) next to a side wall can need up to a
+    3-column shift, and rotating it into vertical near the floor/top can
+    need up to a 3-row shift.
+    """
+    kicks: List[Tuple[int, int]] = []
+    for mag in (1, 2, 3):
+        candidates = []
+        for dx in range(-mag, mag + 1):
+            for dy in range(-mag, mag + 1):
+                if max(abs(dx), abs(dy)) != mag:
+                    continue
+                candidates.append((dx, dy))
+
+        def sort_key(t):
+            dx, dy = t
+            category = 0 if dy == 0 else (1 if dx == 0 else 2)  # horiz, vert, diagonal
+            return (category, 0 if dx < 0 else 1, 0 if dy < 0 else 1)
+
+        candidates.sort(key=sort_key)
+        kicks.extend(candidates)
+    return kicks
+
+
 # Colors used throughout the UI
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -334,26 +366,31 @@ class TetrisGame:
             self._register_ground_touch()
         return True
 
+    _WALL_KICKS = _generate_wall_kicks()
+
     def rotate_piece(self, direction: int) -> None:
         """
         Rotate the piece in the given direction (1 for clockwise, -1 for
-        counter-clockwise). If the rotation is invalid due to a wall or
-        block collision, attempt a wall kick.
+        counter-clockwise). If the rotation doesn't fit in place, try a
+        series of wall-kick offsets (see _WALL_KICKS) until one fits, or
+        give up and revert if none do.
         """
         old_rotation = self.current_piece.rotation_index
+        old_x, old_y = self.current_piece.x, self.current_piece.y
         self.current_piece.rotate(direction)
+
         if not self._is_valid_position(self.current_piece):
-            wall_kicks = [(-1, 0), (1, 0), (-2, 0), (2, 0)]
-            for dx, dy in wall_kicks:
-                self.current_piece.x += dx
-                self.current_piece.y += dy
+            for dx, dy in self._WALL_KICKS:
+                self.current_piece.x = old_x + dx
+                self.current_piece.y = old_y + dy
                 if self._is_valid_position(self.current_piece):
                     break
-                self.current_piece.x -= dx
-                self.current_piece.y -= dy
+                self.current_piece.x, self.current_piece.y = old_x, old_y
             else:
                 self.current_piece.rotation_index = old_rotation
+                self.current_piece.x, self.current_piece.y = old_x, old_y
                 return
+
         if self.is_on_ground(self.current_piece):
             self._register_ground_touch()
 
