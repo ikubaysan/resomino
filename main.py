@@ -58,24 +58,29 @@ VS_NUM_NEXT = 4
 # ---------------------------------------------------
 # Tetromino Definitions
 # ---------------------------------------------------
+# Super Rotation System (SRS) -- the standard used by TETR.IO, Puyo Puyo Tetris
+# and every Guideline game. Each rotation state is the piece's cells inside its
+# bounding box (3x3 for J/L/S/T/Z, 4x4 for I and O), listed in the order
+# 0 = spawn, 1 = rotated right (CW), 2 = 180, 3 = rotated left (CCW).
+# Coordinates are (x, y) with y increasing downward.
 TETROMINOES = {
     "I": [
-        [(0, 0), (1, 0), (2, 0), (3, 0)],
-        [(0, 0), (0, 1), (0, 2), (0, 3)],
-        [(0, 0), (1, 0), (2, 0), (3, 0)],
-        [(0, 0), (0, 1), (0, 2), (0, 3)],
+        [(0, 1), (1, 1), (2, 1), (3, 1)],
+        [(2, 0), (2, 1), (2, 2), (2, 3)],
+        [(0, 2), (1, 2), (2, 2), (3, 2)],
+        [(1, 0), (1, 1), (1, 2), (1, 3)],
     ],
     "O": [
-        [(0, 0), (1, 0), (0, 1), (1, 1)],
-        [(0, 0), (1, 0), (0, 1), (1, 1)],
-        [(0, 0), (1, 0), (0, 1), (1, 1)],
-        [(0, 0), (1, 0), (0, 1), (1, 1)],
+        [(1, 0), (2, 0), (1, 1), (2, 1)],
+        [(1, 0), (2, 0), (1, 1), (2, 1)],
+        [(1, 0), (2, 0), (1, 1), (2, 1)],
+        [(1, 0), (2, 0), (1, 1), (2, 1)],
     ],
     "T": [
-        [(0, 1), (1, 1), (2, 1), (1, 0)],
-        [(1, 0), (1, 1), (1, 2), (2, 1)],
-        [(0, 0), (1, 0), (2, 0), (1, 1)],
-        [(0, 1), (1, 1), (1, 0), (1, 2)],
+        [(1, 0), (0, 1), (1, 1), (2, 1)],
+        [(1, 0), (1, 1), (2, 1), (1, 2)],
+        [(0, 1), (1, 1), (2, 1), (1, 2)],
+        [(1, 0), (0, 1), (1, 1), (1, 2)],
     ],
     "S": [
         [(1, 0), (2, 0), (0, 1), (1, 1)],
@@ -85,23 +90,60 @@ TETROMINOES = {
     ],
     "Z": [
         [(0, 0), (1, 0), (1, 1), (2, 1)],
-        [(1, -1), (1, 0), (0, 0), (0, 1)],
-        [(0, 0), (1, 0), (1, 1), (2, 1)],
-        [(1, -1), (1, 0), (0, 0), (0, 1)],
+        [(2, 0), (1, 1), (2, 1), (1, 2)],
+        [(0, 1), (1, 1), (1, 2), (2, 2)],
+        [(1, 0), (0, 1), (1, 1), (0, 2)],
     ],
     "L": [
-        [(0, 0), (0, 1), (0, 2), (1, 2)],
-        [(0, 0), (1, 0), (2, 0), (0, 1)],
-        [(1, 0), (1, 1), (1, 2), (0, 0)],
-        [(0, 1), (1, 1), (2, 1), (2, 0)],
+        [(2, 0), (0, 1), (1, 1), (2, 1)],
+        [(1, 0), (1, 1), (1, 2), (2, 2)],
+        [(0, 1), (1, 1), (2, 1), (0, 2)],
+        [(0, 0), (1, 0), (1, 1), (1, 2)],
     ],
     "J": [
-        [(1, 0), (1, 1), (1, 2), (0, 2)],
         [(0, 0), (0, 1), (1, 1), (2, 1)],
-        [(0, 0), (0, 1), (0, 2), (1, 0)],
-        [(0, 0), (1, 0), (2, 0), (2, 1)],
+        [(1, 0), (2, 0), (1, 1), (1, 2)],
+        [(0, 1), (1, 1), (2, 1), (2, 2)],
+        [(1, 0), (1, 1), (0, 2), (1, 2)],
     ],
 }
+
+# Spawn row of each piece's bounding box. The I piece's cells sit on the 2nd row
+# of its 4x4 box, so its box starts one row higher to put it on the top row.
+SPAWN_Y: Dict[str, int] = {"I": -1}
+
+# SRS wall kick tests, written the way the SRS charts are (x right, y UP).
+# Key = (from_state, to_state). Each test is tried in order; the first one that
+# fits is used. (The code flips y when applying them.) O never kicks.
+_KICKS_JLSTZ = {
+    (0, 1): [(0, 0), (-1, 0), (-1, 1), (0, -2), (-1, -2)],
+    (1, 0): [(0, 0), (1, 0), (1, -1), (0, 2), (1, 2)],
+    (1, 2): [(0, 0), (1, 0), (1, -1), (0, 2), (1, 2)],
+    (2, 1): [(0, 0), (-1, 0), (-1, 1), (0, -2), (-1, -2)],
+    (2, 3): [(0, 0), (1, 0), (1, 1), (0, -2), (1, -2)],
+    (3, 2): [(0, 0), (-1, 0), (-1, -1), (0, 2), (-1, 2)],
+    (3, 0): [(0, 0), (-1, 0), (-1, -1), (0, 2), (-1, 2)],
+    (0, 3): [(0, 0), (1, 0), (1, 1), (0, -2), (1, -2)],
+}
+_KICKS_I = {
+    (0, 1): [(0, 0), (-2, 0), (1, 0), (-2, -1), (1, 2)],
+    (1, 0): [(0, 0), (2, 0), (-1, 0), (2, 1), (-1, -2)],
+    (1, 2): [(0, 0), (-1, 0), (2, 0), (-1, 2), (2, -1)],
+    (2, 1): [(0, 0), (1, 0), (-2, 0), (1, -2), (-2, 1)],
+    (2, 3): [(0, 0), (2, 0), (-1, 0), (2, 1), (-1, -2)],
+    (3, 2): [(0, 0), (-2, 0), (1, 0), (-2, -1), (1, 2)],
+    (3, 0): [(0, 0), (1, 0), (-2, 0), (1, -2), (-2, 1)],
+    (0, 3): [(0, 0), (-1, 0), (2, 0), (-1, 2), (2, -1)],
+}
+
+
+def srs_kicks(shape: str, from_state: int, to_state: int) -> List[Tuple[int, int]]:
+    """Kick offsets as (dx, dy) in screen coordinates (y down)."""
+    if shape == "O":
+        return [(0, 0)]
+    table = _KICKS_I if shape == "I" else _KICKS_JLSTZ
+    return [(dx, -dy) for dx, dy in table[(from_state, to_state)]]
+
 
 COLORS: Dict[str, Tuple[int, int, int]] = {
     "I": (0, 255, 255),
@@ -247,26 +289,6 @@ def format_slider_value(spec: dict, value: int) -> str:
     return f"{value} ms" if spec["unit"] == "ms" else f"{value}X"
 
 
-def _generate_wall_kicks() -> List[Tuple[int, int]]:
-    kicks: List[Tuple[int, int]] = []
-    for mag in (1, 2, 3):
-        candidates = []
-        for dx in range(-mag, mag + 1):
-            for dy in range(-mag, mag + 1):
-                if max(abs(dx), abs(dy)) != mag:
-                    continue
-                candidates.append((dx, dy))
-
-        def sort_key(t):
-            dx, dy = t
-            category = 0 if dy == 0 else (1 if dx == 0 else 2)
-            return (category, 0 if dx < 0 else 1, 0 if dy < 0 else 1)
-
-        candidates.sort(key=sort_key)
-        kicks.extend(candidates)
-    return kicks
-
-
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 GRAY = (128, 128, 128)
@@ -327,7 +349,7 @@ class Tetromino:
         self.shape: str = shape
         self.rotation_index: int = 0
         self.x: int = 3
-        self.y: int = 0
+        self.y: int = SPAWN_Y.get(shape, 0)
         self.color: Tuple[int, int, int] = COLORS[shape]
 
     def get_blocks(self) -> List[Tuple[int, int]]:
@@ -689,24 +711,23 @@ class TetrisGame:
             self._register_ground_touch()
         return True
 
-    _WALL_KICKS = _generate_wall_kicks()
-
     def rotate_piece(self, direction: int) -> None:
-        old_rotation = self.current_piece.rotation_index
-        old_x, old_y = self.current_piece.x, self.current_piece.y
-        self.current_piece.rotate(direction)
-        if not self._is_valid_position(self.current_piece):
-            for dx, dy in self._WALL_KICKS:
-                self.current_piece.x = old_x + dx
-                self.current_piece.y = old_y + dy
-                if self._is_valid_position(self.current_piece):
-                    break
-                self.current_piece.x, self.current_piece.y = old_x, old_y
-            else:
-                self.current_piece.rotation_index = old_rotation
-                self.current_piece.x, self.current_piece.y = old_x, old_y
-                return
-        if self.is_on_ground(self.current_piece):
+        """SRS rotation: try the rotation in place, then each SRS kick in order."""
+        piece = self.current_piece
+        old_rotation = piece.rotation_index
+        old_x, old_y = piece.x, piece.y
+        new_rotation = (old_rotation + direction) % 4
+        piece.rotation_index = new_rotation
+        for dx, dy in srs_kicks(piece.shape, old_rotation, new_rotation):
+            piece.x = old_x + dx
+            piece.y = old_y + dy
+            if self._is_valid_position(piece):
+                break
+        else:
+            piece.rotation_index = old_rotation
+            piece.x, piece.y = old_x, old_y
+            return
+        if self.is_on_ground(piece):
             self._register_ground_touch()
         self._cut_das()
 
@@ -752,11 +773,12 @@ class TetrisGame:
         can still try to move it somewhere safe. Only fails if no spot works."""
         piece.x = 3
         piece.rotation_index = 0
-        for y in range(0, -SPAWN_BUFFER_ROWS - 1, -1):
-            piece.y = y
+        base_y = SPAWN_Y.get(piece.shape, 0)
+        for offset in range(0, -SPAWN_BUFFER_ROWS, -1):
+            piece.y = base_y + offset
             if self._is_valid_position(piece):
                 return True
-        piece.y = 0
+        piece.y = base_y
         return False
 
     def spawn_new_piece(self) -> None:
